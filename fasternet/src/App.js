@@ -9,7 +9,6 @@ import {
   IconButton
 } from "@mui/material";
 
-// Ícones
 import EditIcon from "@mui/icons-material/Edit";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import HistoryIcon from "@mui/icons-material/History";
@@ -18,11 +17,14 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 
+// 🆕 Drag & Drop
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
 export default function App() {
   const [user, setUser] = useState(Cookies.get("fn_user") || "");
   const [pass, setPass] = useState("");
   const [logged, setLogged] = useState(!!Cookies.get("fn_user"));
-  const [theme, setTheme] = useState(Cookies.get("fn_theme") || "dark"); // tema salvo
+  const [theme, setTheme] = useState(Cookies.get("fn_theme") || "dark");
   const [cards, setCards] = useState([]);
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -76,20 +78,26 @@ export default function App() {
     }[tipo]);
 
   const handleLogin = async () => {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("username", user)
-      .eq("password", pass)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("username", user)
+        .eq("password", pass)
+        .single();
 
-    if (error || !data) {
-      alert("Usuário ou senha incorretos!");
-      return;
+      if (error || !data) {
+        alert("Usuário ou senha incorretos!");
+        return;
+      }
+
+      Cookies.set("fn_user", data.username, { expires: 7 });
+      setLogged(true);
+      setPass("");
+    } catch (err) {
+      console.error("Erro no login:", err);
+      alert("Erro ao tentar logar!");
     }
-    Cookies.set("fn_user", user, { expires: 7 });
-    setLogged(true);
-    setPass("");
   };
 
   const handleLogout = () => {
@@ -208,16 +216,7 @@ export default function App() {
     reloadPage();
   };
 
-  const resetForm = () =>
-    setForm({
-      trecho_cidade: "",
-      tipo: "BACKBONE",
-      descricao: "",
-      ticket: "",
-      afetacao: "",
-      grupo_acionado: "",
-      data_criacao: dayjs().format("YYYY-MM-DDTHH:mm"),
-    });
+  const resetForm = () => setForm(emptyForm);
 
   const openCreateModal = () => {
     resetForm();
@@ -238,11 +237,16 @@ export default function App() {
     setOpenEdit(true);
   };
 
-console.log("URL Supabase:", process.env.REACT_APP_SUPABASE_URL);
-console.log("KEY Supabase:", process.env.REACT_APP_SUPABASE_KEY);
+  // 🆕 Função para reorganizar os cards localmente
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+    const items = Array.from(cards);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    setCards(items);
+  };
 
-
-  if (!logged)
+  if (!logged) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: bgColor, color: textColor, p: 6 }}>
         <Box sx={{ maxWidth: 360, mx: "auto", bgcolor: "#fff", color: "#000", p: 4, borderRadius: 2 }}>
@@ -255,7 +259,9 @@ console.log("KEY Supabase:", process.env.REACT_APP_SUPABASE_KEY);
         </Box>
       </Box>
     );
+  }
 
+  // ---- Interface principal ----
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: bgColor, color: textColor, p: 4 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
@@ -271,44 +277,66 @@ console.log("KEY Supabase:", process.env.REACT_APP_SUPABASE_KEY);
         </Stack>
       </Stack>
 
-      <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(400px, 1fr))" gap={3}>
-        {cards.map((c) => (
-          <Card
-            key={c.id}
-            sx={{
-              backgroundColor: c.cor_atual || getBaseColor(c.tipo),
-              borderRadius: 3,
-              boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
-              maxWidth: 520,
-              color: "#111",
-              fontWeight: 600,
-              mx: "auto",
-              p: 1.5,
-            }}
-          >
-            <CardContent>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>{c.trecho_cidade}</Typography>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{c.tipo}</Typography>
-              <Divider sx={{ my: 1 }} />
-              <Typography sx={{ fontWeight: 600, fontSize: "1.1rem" }}>{c.descricao}</Typography>
-              <Typography variant="body1" sx={{ mt: 1, fontWeight: 600 }}>🏷️ Ticket: {c.ticket || "-"}</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>⚠️ {c.afetacao || "-"} Cliente(s)</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>👥 Grupo: {c.grupo_acionado || "-"}</Typography>
-              <Typography variant="caption" display="block" mt={1} sx={{ fontWeight: 600 }}>
-                Criado em: {dayjs(c.data_criacao).format("DD/MM/YYYY HH:mm")}
-              </Typography>
+      {/* 🆕 Drag and Drop aplicado aos cards */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="cards" direction="horizontal" type="CARD">
+          {(provided) => (
+            <Box
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              display="grid"
+              gridTemplateColumns="repeat(auto-fit, minmax(400px, 1fr))"
+              gap={3}
+            >
+              {cards.map((c, index) => (
+                <Draggable key={c.id.toString()} draggableId={c.id.toString()} index={index}>
+                  {(provided) => (
+                    <Card
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      sx={{
+                        backgroundColor: c.cor_atual || getBaseColor(c.tipo),
+                        borderRadius: 3,
+                        boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+                        color: "#111",
+                        fontWeight: 600,
+                        mx: "auto",
+                        p: 1.5,
+                        minHeight: 260, // 🆕 tamanho fixo
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <CardContent>
+                        <Typography variant="h5" sx={{ fontWeight: 700 }}>{c.trecho_cidade}</Typography>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{c.tipo}</Typography>
+                        <Divider sx={{ my: 1 }} />
+                        <Typography sx={{ fontWeight: 600, fontSize: "1.1rem" }}>{c.descricao}</Typography>
+                        <Typography variant="body1" sx={{ mt: 1, fontWeight: 600 }}>🏷️ Ticket: {c.ticket || "-"}</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>⚠️ {c.afetacao || "-"}</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>👥 Grupo: {c.grupo_acionado || "-"}</Typography>
+                        <Typography variant="caption" display="block" mt={1} sx={{ fontWeight: 600 }}>
+                          Criado em: {dayjs(c.data_criacao).format("DD/MM/YYYY HH:mm")}
+                        </Typography>
+                      </CardContent>
 
-              <Stack direction="row" spacing={1.5} mt={2}>
-                <IconButton onClick={() => openEditModalWithCard(c)}><EditIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-                <IconButton onClick={() => handleOpenUpdate(c)}><NoteAddIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-                <IconButton onClick={() => handleOpenHistory(c)}><HistoryIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-                <IconButton onClick={() => { setSelected(c); setDeleteConfirm(""); setOpenDelete(true); }}><DeleteIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-              </Stack>
-            </CardContent>
-          </Card>
-        ))}
-      </Box>
-
+                      <Stack direction="row" spacing={1.5} mt={2}>
+                        <IconButton onClick={() => openEditModalWithCard(c)}><EditIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                        <IconButton onClick={() => handleOpenUpdate(c)}><NoteAddIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                        <IconButton onClick={() => handleOpenHistory(c)}><HistoryIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                        <IconButton onClick={() => { setSelected(c); setDeleteConfirm(""); setOpenDelete(true); }}><DeleteIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                      </Stack>
+                    </Card>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </Box>
+          )}
+        </Droppable>
+      </DragDropContext>
       {/* ---- Modais ---- */}
       <Modal open={openCreate} onClose={() => { setOpenCreate(false); resetForm(); }}>
         <Box sx={modalStyle}>
@@ -333,11 +361,11 @@ console.log("KEY Supabase:", process.env.REACT_APP_SUPABASE_KEY);
               <Box sx={{ maxHeight: 240, overflowY: "auto", mb: 2 }}>
                 {selected.updates?.length > 0
                   ? selected.updates.map((u) => (
-                      <Box key={u.id} sx={{ mb: 1, p: 1, bgcolor: "#fff", borderRadius: 1 }}>
-                        <Typography variant="body2" sx={{ color: "#111" }}>{u.texto}</Typography>
-                        <Typography variant="caption" sx={{ color: "#444" }}>{dayjs(u.data_registro).format("DD/MM HH:mm")}</Typography>
-                      </Box>
-                    ))
+                    <Box key={u.id} sx={{ mb: 1, p: 1, bgcolor: "#fff", borderRadius: 1 }}>
+                      <Typography variant="body2" sx={{ color: "#111" }}>{u.texto}</Typography>
+                      <Typography variant="caption" sx={{ color: "#444" }}>{dayjs(u.data_registro).format("DD/MM HH:mm")}</Typography>
+                    </Box>
+                  ))
                   : <Typography>Nenhuma atualização.</Typography>}
               </Box>
               <TextField fullWidth multiline minRows={4} label="Nova atualização" value={updateText} onChange={(e) => setUpdateText(e.target.value)} sx={{ mb: 2 }} />
@@ -359,11 +387,11 @@ console.log("KEY Supabase:", process.env.REACT_APP_SUPABASE_KEY);
               <Box sx={{ maxHeight: 360, overflowY: "auto" }}>
                 {selected.updates?.length > 0
                   ? selected.updates.map((u) => (
-                      <Box key={u.id} sx={{ mb: 1, p: 1, bgcolor: "#fff", borderRadius: 1 }}>
-                        <Typography variant="body2" sx={{ color: "#111" }}>{u.texto}</Typography>
-                        <Typography variant="caption" sx={{ color: "#444" }}>{dayjs(u.data_registro).format("DD/MM HH:mm")}</Typography>
-                      </Box>
-                    ))
+                    <Box key={u.id} sx={{ mb: 1, p: 1, bgcolor: "#fff", borderRadius: 1 }}>
+                      <Typography variant="body2" sx={{ color: "#111" }}>{u.texto}</Typography>
+                      <Typography variant="caption" sx={{ color: "#444" }}>{dayjs(u.data_registro).format("DD/MM HH:mm")}</Typography>
+                    </Box>
+                  ))
                   : <Typography>Nenhuma atualização registrada.</Typography>}
               </Box>
             </>
@@ -404,47 +432,59 @@ function CardForm({ form, setForm, onSubmit, onCancel, disableDate }) {
       <TextField label="Trecho / Cidade" value={form.trecho_cidade} onChange={(e) => setForm({ ...form, trecho_cidade: e.target.value.toLocaleUpperCase() })} />
       <FormControl fullWidth>
         <InputLabel>Tipo</InputLabel>
-        <Select value={form.tipo} label="Tipo" onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+                <Select
+          value={form.tipo}
+          label="Tipo"
+          onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+        >
           <MenuItem value="BACKBONE">BACKBONE</MenuItem>
           <MenuItem value="PRIMARIA">PRIMÁRIA</MenuItem>
           <MenuItem value="GPON">GPON</MenuItem>
           <MenuItem value="POP">POP</MenuItem>
-                </Select>
+        </Select>
       </FormControl>
+
       <TextField
         label="Descrição"
         multiline
         minRows={3}
         value={form.descricao}
-        onChange={(e) => setForm({ ...form, descricao: e.target.value.toUpperCase() })}
+        onChange={(e) => setForm({ ...form, descricao: e.target.value })}
       />
+
       <TextField
         label="Ticket"
         value={form.ticket}
-        onChange={(e) => setForm({ ...form, ticket: e.target.value.toUpperCase() })}
+        onChange={(e) => setForm({ ...form, ticket: e.target.value })}
       />
+
       <TextField
         label="Afetação"
+        multiline
+        minRows={2}
         value={form.afetacao}
-        onChange={(e) => setForm({ ...form, afetacao: e.target.value.toUpperCase() })}
+        onChange={(e) => setForm({ ...form, afetacao: e.target.value })}
       />
+
       <TextField
         label="Grupo Acionado"
         value={form.grupo_acionado}
-        onChange={(e) => setForm({ ...form, grupo_acionado: e.target.value.toUpperCase() })}
+        onChange={(e) => setForm({ ...form, grupo_acionado: e.target.value })}
       />
-      {!disableDate && (
-        <TextField
-          label="Data de Criação"
-          type="datetime-local"
-          value={form.data_criacao}
-          onChange={(e) => setForm({ ...form, data_criacao: e.target.value })}
-          InputLabelProps={{ shrink: true }}
-        />
-      )}
-      <Stack direction="row" spacing={2} justifyContent="flex-end">
+
+      <TextField
+        label="Data de Criação"
+        type="datetime-local"
+        disabled={disableDate}
+        value={form.data_criacao}
+        onChange={(e) => setForm({ ...form, data_criacao: e.target.value })}
+      />
+
+      <Stack direction="row" justifyContent="flex-end" spacing={2}>
         <Button onClick={onCancel}>Cancelar</Button>
-        <Button variant="contained" onClick={onSubmit}>Salvar</Button>
+        <Button variant="contained" onClick={onSubmit}>
+          Salvar
+        </Button>
       </Stack>
     </Stack>
   );
