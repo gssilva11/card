@@ -259,7 +259,7 @@ console.log("KEY Supabase:", process.env.REACT_APP_SUPABASE_KEY);
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: bgColor, color: textColor, p: 4 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">📡 Fasternet - Cards</Typography>
+        <Typography variant="h4">📡 INCIDENTES NOC</Typography>
         <Stack direction="row" spacing={2} alignItems="center">
           <Button variant="contained" onClick={openCreateModal}>+ Novo Card</Button>
           <IconButton onClick={toggleTheme} sx={{ color: textColor }} title="Alternar tema">
