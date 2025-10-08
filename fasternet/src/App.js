@@ -339,7 +339,7 @@ export default function App() {
                         fontWeight: 600,
                         mx: "auto",
                         p: 1.2,
-                        height: 320, // 20% menor que 320
+                        height: 350, // 20% menor que 320
                         width: 300,
                         display: "flex",
                         flexDirection: "column",
@@ -379,32 +379,32 @@ export default function App() {
                             fontWeight: 800,
                             lineHeight: 1.1,
                             mb: 0.3,
-                            fontSize: "1.7rem",
+                            fontSize: "2.1rem",
                             textAlign: "center"
                           }}
                         >
                           {c.trecho_cidade}
                         </Typography>
 
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "0.9rem", textAlign: "center" }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "1.2rem", textAlign: "center" }}>
                           {c.tipo}
                         </Typography>
 
                         <Divider sx={{ my: 0.8 }} />
 
-                        <Typography sx={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                        <Typography sx={{ fontWeight: 600, fontSize: "1.2rem" }}>
                           📝Descrição: {c.descricao}
                         </Typography>
 
-                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
                           🏷️Ticket: {c.ticket || "-"}
                         </Typography>
 
-                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600 }}>
-                          ⚠️ Afetação: {c.afetacao || "-"} Clientes
+                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
+                          ⚠️ Afetação: {c.afetacao || "-"}
                         </Typography>
 
-                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
                           👥Grupo: {c.grupo_acionado || "-"}
                         </Typography>
 
