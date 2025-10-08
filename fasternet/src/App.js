@@ -28,6 +28,7 @@ export default function App() {
   const [logged, setLogged] = useState(!!Cookies.get("fn_user"));
   const [theme, setTheme] = useState(Cookies.get("fn_theme") || "dark");
   const [cards, setCards] = useState([]);
+  const [filter, setFilter] = useState("TODOS");
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openUpdate, setOpenUpdate] = useState(false);
@@ -291,6 +292,45 @@ export default function App() {
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">📡 INCIDENTES NOC</Typography>
         <Stack direction="row" spacing={2} alignItems="center">
+          {/* 🆕 Filtro por tipo */}
+<FormControl size="small" sx={{ minWidth: 180 }}>
+  <InputLabel sx={{ color: theme === "dark" ? "#fff" : "#000" }}>
+    Filtrar por tipo
+  </InputLabel>
+  <Select
+    value={filter}
+    label="Filtrar por tipo"
+    onChange={(e) => setFilter(e.target.value)}
+    sx={{
+      bgcolor: theme === "dark" ? "#2a2a2a" : "#fff",
+      color: theme === "dark" ? "#fff" : "#000",
+      "& .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme === "dark" ? "#555" : "#ccc",
+      },
+      "&:hover .MuiOutlinedInput-notchedOutline": {
+        borderColor: theme === "dark" ? "#888" : "#888",
+      },
+      "& .MuiSvgIcon-root": {
+        color: theme === "dark" ? "#fff" : "#000",
+      },
+    }}
+    MenuProps={{
+      PaperProps: {
+        sx: {
+          bgcolor: theme === "dark" ? "#2a2a2a" : "#fff",
+          color: theme === "dark" ? "#fff" : "#000",
+        },
+      },
+    }}
+  >
+    <MenuItem value="TODOS">Todos</MenuItem>
+    <MenuItem value="BACKBONE">BACKBONE</MenuItem>
+    <MenuItem value="PRIMARIA">PRIMÁRIA</MenuItem>
+    <MenuItem value="GPON">GPON</MenuItem>
+    <MenuItem value="POP">POP</MenuItem>
+  </Select>
+</FormControl>
+
           <Button variant="contained" onClick={openCreateModal}>+ Novo Card</Button>
 
           <IconButton
@@ -309,132 +349,134 @@ export default function App() {
             <LogoutIcon />
           </IconButton>
         </Stack>
-
       </Stack>
 
-      {/* 🆕 Drag and Drop aplicado aos cards */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="cards" direction="horizontal" type="CARD">
-          {(provided) => (
-            <Box
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              display="grid"
-              gridTemplateColumns="repeat(auto-fit, minmax(320px, 1fr))"
-              columnGap={2} // espaço horizontal pequeno
-              rowGap={2}      // mantém espaço vertical bom
-            >
-              {cards.map((c, index) => (
-                <Draggable key={c.id.toString()} draggableId={c.id.toString()} index={index}>
-                  {(provided) => (
-                    <Card
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
+      {/* 🆕 Drag and Drop aplicado aos cards */ }
+  <DragDropContext onDragEnd={handleDragEnd}>
+    <Droppable droppableId="cards" direction="horizontal" type="CARD">
+      {(provided) => (
+        <Box
+          {...provided.droppableProps}
+          ref={provided.innerRef}
+          display="grid"
+          gridTemplateColumns="repeat(auto-fit, minmax(320px, 1fr))"
+          columnGap={2} // espaço horizontal pequeno
+          rowGap={2}      // mantém espaço vertical bom
+        >
+          {cards
+            .filter((c) => filter === "TODOS" ? true : c.tipo === filter)
+            .map((c, index) => (
+
+              <Draggable key={c.id.toString()} draggableId={c.id.toString()} index={index}>
+                {(provided) => (
+                  <Card
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    sx={{
+                      backgroundColor: c.cor_atual || getBaseColor(c.tipo),
+                      borderRadius: 3,
+                      boxShadow: "0 6px 16px rgba(0,0,0,0.4)",
+                      color: "#111",
+                      fontWeight: 600,
+                      mx: "auto",
+                      p: 1.2,
+                      height: 350, // 20% menor que 320
+                      width: 300,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      overflow: "hidden",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                      "&:hover": {
+                        transform: "scale(1.02)",
+                        boxShadow: "0 8px 22px rgba(0,0,0,0.5)",
+                      },
+                    }}
+                  >
+                    <CardContent
                       sx={{
-                        backgroundColor: c.cor_atual || getBaseColor(c.tipo),
-                        borderRadius: 3,
-                        boxShadow: "0 6px 16px rgba(0,0,0,0.4)",
-                        color: "#111",
-                        fontWeight: 600,
-                        mx: "auto",
-                        p: 1.2,
-                        height: 350, // 20% menor que 320
-                        width: 300,
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "space-between",
-                        overflow: "hidden",
-                        whiteSpace: "normal",
-                        wordBreak: "break-word",
-                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                        "&:hover": {
-                          transform: "scale(1.02)",
-                          boxShadow: "0 8px 22px rgba(0,0,0,0.5)",
+                        flexGrow: 1,
+                        overflowY: "auto",
+                        paddingBottom: 1,
+                        pr: 1,
+                        "&::-webkit-scrollbar": {
+                          width: "6px",
                         },
+                        "&::-webkit-scrollbar-thumb": {
+                          backgroundColor: "transparent", // transparente
+                        },
+                        "&::-webkit-scrollbar-track": {
+                          backgroundColor: "transparent", // transparente
+                        },
+                        scrollbarWidth: "thin",
+                        scrollbarColor: "transparent transparent", // Firefox
                       }}
                     >
-                      <CardContent
+                      <Typography
+                        variant="h5"
                         sx={{
-                          flexGrow: 1,
-                          overflowY: "auto",
-                          paddingBottom: 1,
-                          pr: 1,
-                          "&::-webkit-scrollbar": {
-                            width: "6px",
-                          },
-                          "&::-webkit-scrollbar-thumb": {
-                            backgroundColor: "transparent", // transparente
-                          },
-                          "&::-webkit-scrollbar-track": {
-                            backgroundColor: "transparent", // transparente
-                          },
-                          scrollbarWidth: "thin",
-                          scrollbarColor: "transparent transparent", // Firefox
+                          fontWeight: 800,
+                          lineHeight: 1.1,
+                          mb: 0.3,
+                          fontSize: "2.1rem",
+                          textAlign: "center"
                         }}
                       >
-                        <Typography
-                          variant="h5"
-                          sx={{
-                            fontWeight: 800,
-                            lineHeight: 1.1,
-                            mb: 0.3,
-                            fontSize: "2.1rem",
-                            textAlign: "center"
-                          }}
-                        >
-                          {c.trecho_cidade}
-                        </Typography>
+                        {c.trecho_cidade}
+                      </Typography>
 
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "1.2rem", textAlign: "center" }}>
-                          {c.tipo}
-                        </Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "1.2rem", textAlign: "center" }}>
+                        {c.tipo}
+                      </Typography>
 
-                        <Divider sx={{ my: 0.8 }} />
+                      <Divider sx={{ my: 0.8 }} />
 
-                        <Typography sx={{ fontWeight: 600, fontSize: "1.2rem" }}>
-                          📝Descrição: {c.descricao}
-                        </Typography>
+                      <Typography sx={{ fontWeight: 600, fontSize: "1.2rem" }}>
+                        📝Descrição: {c.descricao}
+                      </Typography>
 
-                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
-                          🏷️Ticket: {c.ticket || "-"}
-                        </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
+                        🏷️Ticket: {c.ticket || "-"}
+                      </Typography>
 
-                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
-                          ⚠️ Afetação: {c.afetacao || "-"}
-                        </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
+                        ⚠️ Afetação: {c.afetacao || "-"}
+                      </Typography>
 
-                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
-                          👥Grupo: {c.grupo_acionado || "-"}
-                        </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600, fontSize: "1.2rem" }}>
+                        👥Grupo: {c.grupo_acionado || "-"}
+                      </Typography>
 
-                        <Typography
-                          variant="caption"
-                          display="block"
-                          mt={0.6}
-                          sx={{ fontWeight: 600 }}
-                        >
-                          Criado em: {dayjs(c.data_criacao).format("DD/MM/YYYY HH:mm")}
-                        </Typography>
-                      </CardContent>
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        mt={0.6}
+                        sx={{ fontWeight: 600, fontSize: "0.9rem" }}
+                      >
+                        Criado em: {dayjs(c.data_criacao).format("DD/MM/YYYY HH:mm")}
+                      </Typography>
+                    </CardContent>
 
 
-                      <Stack direction="row" spacing={1.5} mt={2}>
-                        <IconButton onClick={() => openEditModalWithCard(c)}><EditIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-                        <IconButton onClick={() => handleOpenUpdate(c)}><NoteAddIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-                        <IconButton onClick={() => handleOpenHistory(c)}><HistoryIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-                        <IconButton onClick={() => { setSelected(c); setDeleteConfirm(""); setOpenDelete(true); }}><DeleteIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
-                      </Stack>
-                    </Card>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </Box>
-          )}
-        </Droppable>
-      </DragDropContext>
-      {/* ---- Modais ---- */}
+                    <Stack direction="row" spacing={1.5} mt={2}>
+                      <IconButton onClick={() => openEditModalWithCard(c)}><EditIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                      <IconButton onClick={() => handleOpenUpdate(c)}><NoteAddIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                      <IconButton onClick={() => handleOpenHistory(c)}><HistoryIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                      <IconButton onClick={() => { setSelected(c); setDeleteConfirm(""); setOpenDelete(true); }}><DeleteIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
+                    </Stack>
+                  </Card>
+                )}
+              </Draggable>
+            ))}
+          {provided.placeholder}
+        </Box>
+      )}
+    </Droppable>
+  </DragDropContext>
+  {/* ---- Modais ---- */ }
       <Modal open={openCreate} onClose={() => { setOpenCreate(false); resetForm(); }}>
         <Box sx={modalStyle}>
           <Typography variant="h6" mb={2}>📝 Novo Card</Typography>
@@ -507,7 +549,7 @@ export default function App() {
           </Stack>
         </Box>
       </Modal>
-    </Box>
+    </Box >
   );
 }
 
