@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import dayjs from "dayjs";
 import Cookies from "js-cookie";
@@ -16,6 +16,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import LogoutIcon from "@mui/icons-material/Logout";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
+import PauseCircleIcon from "@mui/icons-material/PauseCircle";
+import PlayCircleIcon from "@mui/icons-material/PlayCircle";
 
 // 🆕 Drag & Drop
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -34,6 +36,8 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [updateText, setUpdateText] = useState("");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const refreshInterval = useRef(null);
 
   const emptyForm = {
     trecho_cidade: "",
@@ -51,8 +55,28 @@ export default function App() {
   const textColor = theme === "dark" ? "#fff" : "#111";
 
   useEffect(() => {
-    if (logged) loadCards();
-  }, [logged]);
+    if (!logged) return;
+
+    // carrega imediatamente
+    loadCards();
+
+    // configura intervalo se autoRefresh estiver ativo
+    if (autoRefresh) {
+      refreshInterval.current = setInterval(() => {
+        loadCards();
+      }, 20000); // 20s
+    }
+
+    return () => {
+      if (refreshInterval.current) {
+        clearInterval(refreshInterval.current);
+        refreshInterval.current = null;
+      }
+    };
+  }, [logged, autoRefresh]);
+
+  const toggleAutoRefresh = () => setAutoRefresh(prev => !prev);
+
 
   useEffect(() => {
     Cookies.set("fn_theme", theme, { expires: 30 });
@@ -70,12 +94,12 @@ export default function App() {
   };
 
   const getBaseColor = (tipo) =>
-    ({
-      BACKBONE: "#ff6159",
-      PRIMARIA: "#9999ff",
-      GPON: "#ffff99",
-      POP: "#00cc00",
-    }[tipo]);
+  ({
+    BACKBONE: "#ff6159",
+    PRIMARIA: "#9999ff",
+    GPON: "#ffff99",
+    POP: "#00cc00",
+  }[tipo]);
 
   const handleLogin = async () => {
     try {
@@ -268,13 +292,24 @@ export default function App() {
         <Typography variant="h4">📡 INCIDENTES NOC</Typography>
         <Stack direction="row" spacing={2} alignItems="center">
           <Button variant="contained" onClick={openCreateModal}>+ Novo Card</Button>
+
+          <IconButton
+            onClick={toggleAutoRefresh}
+            sx={{ color: textColor }}
+            title={autoRefresh ? "Pausar atualização" : "Retomar atualização"}
+          >
+            {autoRefresh ? <PauseCircleIcon /> : <PlayCircleIcon />}
+          </IconButton>
+
           <IconButton onClick={toggleTheme} sx={{ color: textColor }} title="Alternar tema">
             {theme === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
+
           <IconButton onClick={handleLogout} sx={{ color: textColor }} title="Sair">
             <LogoutIcon />
           </IconButton>
         </Stack>
+
       </Stack>
 
       {/* 🆕 Drag and Drop aplicado aos cards */}
@@ -285,8 +320,9 @@ export default function App() {
               {...provided.droppableProps}
               ref={provided.innerRef}
               display="grid"
-              gridTemplateColumns="repeat(auto-fit, minmax(400px, 1fr))"
-              gap={3}
+              gridTemplateColumns="repeat(auto-fit, minmax(320px, 1fr))"
+              columnGap={2} // espaço horizontal pequeno
+              rowGap={2}      // mantém espaço vertical bom
             >
               {cards.map((c, index) => (
                 <Draggable key={c.id.toString()} draggableId={c.id.toString()} index={index}>
@@ -298,29 +334,90 @@ export default function App() {
                       sx={{
                         backgroundColor: c.cor_atual || getBaseColor(c.tipo),
                         borderRadius: 3,
-                        boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+                        boxShadow: "0 6px 16px rgba(0,0,0,0.4)",
                         color: "#111",
                         fontWeight: 600,
                         mx: "auto",
-                        p: 1.5,
-                        minHeight: 260, // 🆕 tamanho fixo
+                        p: 1.2,
+                        height: 320, // 20% menor que 320
+                        width: 300,
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "space-between",
+                        overflow: "hidden",
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                        "&:hover": {
+                          transform: "scale(1.02)",
+                          boxShadow: "0 8px 22px rgba(0,0,0,0.5)",
+                        },
                       }}
                     >
-                      <CardContent>
-                        <Typography variant="h5" sx={{ fontWeight: 700 }}>{c.trecho_cidade}</Typography>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{c.tipo}</Typography>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography sx={{ fontWeight: 600, fontSize: "1.1rem" }}>{c.descricao}</Typography>
-                        <Typography variant="body1" sx={{ mt: 1, fontWeight: 600 }}>🏷️ Ticket: {c.ticket || "-"}</Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>⚠️ {c.afetacao || "-"}</Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>👥 Grupo: {c.grupo_acionado || "-"}</Typography>
-                        <Typography variant="caption" display="block" mt={1} sx={{ fontWeight: 600 }}>
+                      <CardContent
+                        sx={{
+                          flexGrow: 1,
+                          overflowY: "auto",
+                          paddingBottom: 1,
+                          pr: 1,
+                          "&::-webkit-scrollbar": {
+                            width: "6px",
+                          },
+                          "&::-webkit-scrollbar-thumb": {
+                            backgroundColor: "transparent", // transparente
+                          },
+                          "&::-webkit-scrollbar-track": {
+                            backgroundColor: "transparent", // transparente
+                          },
+                          scrollbarWidth: "thin",
+                          scrollbarColor: "transparent transparent", // Firefox
+                        }}
+                      >
+                        <Typography
+                          variant="h5"
+                          sx={{
+                            fontWeight: 800,
+                            lineHeight: 1.1,
+                            mb: 0.3,
+                            fontSize: "1.7rem",
+                            textAlign: "center"
+                          }}
+                        >
+                          {c.trecho_cidade}
+                        </Typography>
+
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "0.9rem", textAlign: "center" }}>
+                          {c.tipo}
+                        </Typography>
+
+                        <Divider sx={{ my: 0.8 }} />
+
+                        <Typography sx={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                          📝Descrição: {c.descricao}
+                        </Typography>
+
+                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600 }}>
+                          🏷️Ticket: {c.ticket || "-"}
+                        </Typography>
+
+                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600 }}>
+                          ⚠️ Afetação: {c.afetacao || "-"} Clientes
+                        </Typography>
+
+                        <Typography variant="body2" sx={{ mt: 0.6, fontWeight: 600 }}>
+                          👥Grupo: {c.grupo_acionado || "-"}
+                        </Typography>
+
+                        <Typography
+                          variant="caption"
+                          display="block"
+                          mt={0.6}
+                          sx={{ fontWeight: 600 }}
+                        >
                           Criado em: {dayjs(c.data_criacao).format("DD/MM/YYYY HH:mm")}
                         </Typography>
                       </CardContent>
+
 
                       <Stack direction="row" spacing={1.5} mt={2}>
                         <IconButton onClick={() => openEditModalWithCard(c)}><EditIcon sx={{ fontSize: 34, color: "#000" }} /></IconButton>
@@ -432,7 +529,7 @@ function CardForm({ form, setForm, onSubmit, onCancel, disableDate }) {
       <TextField label="Trecho / Cidade" value={form.trecho_cidade} onChange={(e) => setForm({ ...form, trecho_cidade: e.target.value.toLocaleUpperCase() })} />
       <FormControl fullWidth>
         <InputLabel>Tipo</InputLabel>
-                <Select
+        <Select
           value={form.tipo}
           label="Tipo"
           onChange={(e) => setForm({ ...form, tipo: e.target.value })}
